@@ -33,11 +33,36 @@
         }
 
         .loading-overlay,
-        .save-overlay,
         .settings-overlay {
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(10px);
             z-index: 200;
+        }
+
+        /* Save Bottom Sheet Styles */
+        #saveOverlay {
+            z-index: 300;
+            transition: visibility 0.4s;
+        }
+
+        .save-backdrop {
+            background: rgba(15, 23, 42, 0.5);
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        #saveOverlay:not(.hidden) .save-backdrop {
+            opacity: 1;
+        }
+
+        .save-sheet {
+            transform: translateY(100%);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        #saveOverlay:not(.hidden) .save-sheet {
+            transform: translateY(0);
         }
 
         .vertical-range {
@@ -103,6 +128,27 @@
             </div>
             <p id="loadingText" class="font-black text-slate-800 text-lg tracking-tighter italic">画像を生成中</p>
             <p id="loadingSubText" class="text-xs text-slate-400 mt-2 truncate font-medium"></p>
+
+            <div id="processControls" class="mt-8 hidden">
+                <!-- Analyzing State -->
+                <div id="analyzingView" class="flex justify-center transition-opacity duration-300">
+                    <button onclick="pauseAnalysis()"
+                        class="px-8 py-3 bg-slate-900 text-white rounded-full text-[10px] font-black hover:bg-slate-800 transition-all uppercase tracking-widest italic shadow-xl active:scale-95">
+                        解析を一時停止
+                    </button>
+                </div>
+                <!-- Paused State -->
+                <div id="pausedView" class="hidden flex gap-3 transition-opacity duration-300">
+                    <button onclick="terminateAnalysis()"
+                        class="flex-1 px-6 py-3 bg-slate-100 text-slate-500 rounded-full text-[10px] font-black hover:bg-slate-200 transition-all uppercase tracking-widest italic">
+                        ホームに戻る
+                    </button>
+                    <button onclick="resumeAnalysis()"
+                        class="flex-[1.5] px-8 py-3 bg-blue-600 text-white rounded-full text-[10px] font-black hover:bg-blue-700 transition-all uppercase tracking-widest italic shadow-lg shadow-blue-100 active:scale-95">
+                        解析を再開
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -137,12 +183,21 @@
                         class="w-6 h-6 rounded-lg accent-emerald-500">
                 </div>
 
+                <div class="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-black text-slate-700">全範囲スキャン</span>
+                        <span class="text-[10px] text-slate-400">画像全体を解析対象にする（低速）</span>
+                    </div>
+                    <input type="checkbox" id="forceFullScanCheck" onchange="updateSettings()"
+                        class="w-6 h-6 rounded-lg accent-amber-500">
+                </div>
+
                 <div>
                     <div class="flex justify-between mb-2">
                         <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">スキャン範囲 (px)</span>
-                        <span id="scanRangeVal" class="text-[10px] font-black text-blue-600">600</span>
+                        <span id="scanRangeVal" class="text-[10px] font-black text-blue-600">2000</span>
                     </div>
-                    <input type="range" id="scanRangeSlider" min="200" max="1500" step="50" value="600"
+                    <input type="range" id="scanRangeSlider" min="200" max="5000" step="50" value="2000"
                         oninput="updateSettings()"
                         class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600">
                 </div>
@@ -150,24 +205,45 @@
         </div>
     </div>
 
-    <!-- Save Overlay (Updated for reliability) -->
-    <div id="saveOverlay" class="fixed inset-0 flex flex-col items-center save-overlay hidden">
+    <!-- Save Bottom Sheet (New UI) -->
+    <div id="saveOverlay" class="fixed inset-0 flex items-end justify-center hidden">
+        <div class="save-backdrop absolute inset-0" onclick="hideSaveOverlay()"></div>
         <div
-            class="w-full p-4 flex items-center justify-between border-b border-slate-100 bg-white sticky top-0 z-30 shadow-sm">
-            <div class="flex flex-col">
-                <span
-                    class="text-[10px] font-black uppercase text-emerald-500 tracking-widest leading-none mb-1">Exporting
-                    PNG</span>
-                <span class="text-sm font-black text-slate-800 italic">画像を長押し/右クリックして保存</span>
-            </div>
-            <div class="flex gap-2">
+            class="save-sheet relative w-full max-w-2xl bg-white rounded-t-[3rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border-t border-slate-100">
+            <div class="p-6 flex items-center justify-between border-b border-slate-50">
+                <div class="flex flex-col">
+                    <span
+                        class="text-[10px] font-black uppercase text-emerald-500 tracking-widest leading-none mb-1">Export
+                        Ready</span>
+                    <h3 class="text-lg font-black text-slate-800 italic tracking-tighter">結合結果の保存</h3>
+                </div>
                 <button onclick="hideSaveOverlay()"
-                    class="bg-slate-900 text-white px-6 py-2 rounded-full text-xs font-black active:scale-95 transition-transform uppercase tracking-tighter italic">戻る</button>
+                    class="p-3 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 18L18 6M6 6l12 12" stroke-width="3" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </button>
             </div>
-        </div>
-        <div class="flex-1 overflow-auto p-4 w-full flex flex-col items-center scrolling-touch">
-            <img id="resultImage" class="shadow-2xl max-w-full h-auto bg-white border border-slate-200" alt="結合結果">
-            <div class="h-32 w-full flex-shrink-0"></div>
+
+            <div class="flex-1 overflow-auto p-6 bg-slate-50/50 scrolling-touch flex flex-col items-center">
+                <div class="w-full max-w-md bg-white p-2 rounded-3xl shadow-sm border border-slate-100">
+                    <img id="resultImage" class="w-full h-auto rounded-2xl" alt="結合結果プレビュー">
+                </div>
+                <!-- Spacing for buttons -->
+                <div class="h-12 w-full flex-shrink-0"></div>
+            </div>
+
+            <div class="p-6 bg-white border-t border-slate-100 flex gap-3">
+                <button onclick="hideSaveOverlay()"
+                    class="flex-1 bg-slate-100 text-slate-600 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-all">
+                    キャンセル
+                </button>
+                <button id="realDownloadBtn"
+                    class="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all transform active:scale-95 italic">
+                    保存 (ダウンロード)
+                </button>
+            </div>
         </div>
     </div>
 
@@ -252,9 +328,9 @@
         </div>
 
         <!-- Sheet Panel -->
-        <div id="mainPanel" class="fixed inset-x-0 bottom-0 z-40 p-4 panel-transition panel-hidden">
+        <div id="mainPanel" class="fixed inset-x-0 bottom-0 z-40 p-4 pb-32 panel-transition panel-hidden">
             <div
-                class="max-w-xl mx-auto bg-white rounded-[2rem] shadow-2xl border border-slate-200 flex flex-col max-h-[75vh]">
+                class="max-w-xl mx-auto bg-white rounded-[2rem] shadow-2xl border border-slate-200 flex flex-col max-h-[70vh]">
                 <div class="p-5 border-b border-slate-100 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="w-2.5 h-2.5 bg-blue-600 rounded-full animate-pulse"></div>
@@ -292,132 +368,147 @@
     <script type="module">
 
 
-        const imageInput = document.getElementById('imageInput');
-        const imageList = document.getElementById('imageList');
-        const canvas = document.getElementById('canvas');
-        const zoomRange = document.getElementById('zoomRange');
-        const zoomValue = document.getElementById('zoomValue');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const loading = document.getElementById('loading');
-        const loadingText = document.getElementById('loadingText');
-        const loadingSubText = document.getElementById('loadingSubText');
-        const progressPercent = document.getElementById('progressPercent');
-        const ocrAllBtn = document.getElementById('ocrAllBtn');
-        const toast = document.getElementById('toast');
-        const interactionTip = document.getElementById('interactionTip');
-        const previewContainer = document.getElementById('previewContainer');
-        const mainPanel = document.getElementById('mainPanel');
-        const hubBar = document.getElementById('hubBar');
-        const saveOverlay = document.getElementById('saveOverlay');
-        const resultImage = document.getElementById('resultImage');
-        const settingsOverlay = document.getElementById('settingsOverlay');
+        // --- DOM REFERENCES ---
+        const $ = (id) => document.getElementById(id);
+        const ui = {
+            input: $('imageInput'), list: $('imageList'), canvas: $('canvas'),
+            zoom: $('zoomRange'), zoomVal: $('zoomValue'), download: $('downloadBtn'),
+            clear: $('clearBtn'), loading: $('loading'), loadText: $('loadingText'),
+            loadSub: $('loadingSubText'), progress: $('progressPercent'),
+            ocrBtn: $('ocrAllBtn'), toast: $('toast'), preview: $('previewContainer'),
+            panel: $('mainPanel'), hub: $('hubBar'), save: $('saveOverlay'),
+            resultImg: $('resultImage'), settings: $('settingsOverlay'),
+            realDl: $('realDownloadBtn'), controls: $('processControls'),
+            views: { analyzing: $('analyzingView'), paused: $('pausedView') }
+        };
 
-        let settings = { debugMode: false, showBoxes: false, scanRange: 600 };
+        const settings = { debugMode: false, showBoxes: false, scanRange: 2000, forceFullScan: false };
 
-        window.toggleSettings = () => { if (settingsOverlay) settingsOverlay.classList.toggle('hidden'); };
+        window.toggleSettings = () => ui.settings && ui.settings.classList.toggle('hidden');
         window.updateSettings = () => {
-            const debugCheck = document.getElementById('debugModeCheck');
-            const boxCheck = document.getElementById('showBoxesCheck');
-            const rangeSlider = document.getElementById('scanRangeSlider');
-            if (debugCheck) settings.debugMode = debugCheck.checked;
-            if (boxCheck) settings.showBoxes = boxCheck.checked;
-            if (rangeSlider) {
-                settings.scanRange = parseInt(rangeSlider.value);
-                const valDisplay = document.getElementById('scanRangeVal');
-                if (valDisplay) valDisplay.textContent = settings.scanRange;
+            const getCheck = (id) => $(id)?.checked || false;
+            settings.debugMode = getCheck('debugModeCheck');
+            settings.showBoxes = getCheck('showBoxesCheck');
+            settings.forceFullScan = getCheck('forceFullScanCheck');
+            const range = $('scanRangeSlider');
+            if (range) {
+                settings.scanRange = parseInt(range.value);
+                const disp = $('scanRangeVal'); if (disp) disp.textContent = settings.scanRange;
             }
             debouncedRender();
         };
 
-        let images = [];
-        let activeProcessId = 0;
-        let ocrWorker = null;
-        let isStitchedMode = false;
-        let dragInfo = { isDragging: false, index: -1, startY: 0, startOffset: 0 };
-        let drawInstructions = [];
+        let images = [], activeProcessId = 0, ocrWorker = null, ocrPhase = 'top';
+        let isStitchedMode = false, isAnalysisCancelled = false, isAnalysisPaused = false;
+        let dragInfo = { isDragging: false, index: -1, startY: 0, startOffset: 0 }, drawInstructions = [];
+        let previewUrl = null, resolvePause = null;
 
         function showToast(msg) {
-            if (!toast) return;
-            toast.textContent = msg;
-            toast.classList.remove('translate-y-10', 'opacity-0');
-            setTimeout(() => { if (toast) toast.classList.add('translate-y-10', 'opacity-0'); }, 3000);
+            if (!ui.toast) return;
+            ui.toast.textContent = msg;
+            ui.toast.classList.remove('translate-y-10', 'opacity-0');
+            setTimeout(() => ui.toast?.classList.add('translate-y-10', 'opacity-0'), 3000);
         }
 
-        window.togglePanel = () => { if (mainPanel) mainPanel.classList.toggle('panel-hidden'); };
-        window.hideSaveOverlay = () => { if (saveOverlay) saveOverlay.classList.add('hidden'); if (resultImage) resultImage.src = ''; };
+        window.togglePanel = () => ui.panel && ui.panel.classList.toggle('panel-hidden');
+        window.hideSaveOverlay = () => {
+            ui.save?.classList.add('hidden');
+            if (ui.resultImg) ui.resultImg.src = '';
+            if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+        };
+
+        const updateAnalysisUI = (isPaused) => {
+            if (ui.loadText) ui.loadText.textContent = isPaused ? "一時停止中" : "解析を再開中";
+            ui.views.analyzing?.classList.toggle('hidden', isPaused);
+            ui.views.paused?.classList.toggle('hidden', !isPaused);
+        };
+
+        window.pauseAnalysis = () => { isAnalysisPaused = true; updateAnalysisUI(true); showToast("Analysis Paused"); };
+        window.resumeAnalysis = () => {
+            isAnalysisPaused = false; updateAnalysisUI(false);
+            if (resolvePause) { resolvePause(); resolvePause = null; }
+            showToast("Resuming...");
+        };
+
+        window.terminateAnalysis = () => {
+            isAnalysisCancelled = true; isAnalysisPaused = false;
+            if (resolvePause) { resolvePause(); resolvePause = null; }
+            if (ocrWorker) { ocrWorker.terminate(); ocrWorker = null; }
+            updateLoading(false);
+            showToast("Analysis Terminated");
+        };
+
+        const waitIfPaused = () => isAnalysisPaused ? new Promise(r => resolvePause = r) : Promise.resolve();
 
 
 
         function syncValue(id, val) {
             if (id === 'zoomRange') {
-                if (zoomValue) zoomValue.textContent = val + '%';
-                if (canvas) canvas.style.transform = `scale(${val / 100})`;
+                if (ui.zoomVal) ui.zoomVal.textContent = val + '%';
+                if (ui.canvas) ui.canvas.style.transform = `scale(${val / 100})`;
             }
             debouncedRender();
         }
 
         window.stepValue = (id, delta) => {
-            const el = document.getElementById(id);
-            if (!el) return;
+            const el = $(id); if (!el) return;
             el.value = Math.max(10, Math.min(200, parseInt(el.value) + delta));
             syncValue(id, el.value);
         };
 
-        imageInput.addEventListener('change', handleImageUpload);
-        zoomRange.addEventListener('input', (e) => syncValue('zoomRange', e.target.value));
+        ui.input?.addEventListener('change', handleImageUpload);
+        ui.zoom?.addEventListener('input', (e) => syncValue('zoomRange', e.target.value));
+        if (ui.zoom) ui.zoom.value = 100;
 
-        canvas.addEventListener('mousedown', startDrag);
+        ui.canvas?.addEventListener('mousedown', startDrag);
         window.addEventListener('mousemove', onDrag);
         window.addEventListener('mouseup', stopDrag);
-        canvas.addEventListener('touchstart', (e) => { startDrag(e.touches[0]); }, { passive: false });
+        ui.canvas?.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: false });
         window.addEventListener('touchmove', (e) => { if (dragInfo.isDragging) { e.preventDefault(); onDrag(e.touches[0]); } }, { passive: false });
         window.addEventListener('touchend', stopDrag);
 
         function startDrag(e) {
             if (!isStitchedMode || images.length < 1) return;
-            const rect = canvas.getBoundingClientRect();
-            const scale = parseFloat(zoomRange.value) / 100;
+            const rect = ui.canvas.getBoundingClientRect();
+            const scale = parseFloat(ui.zoom.value) / 100;
             const clickY = (e.clientY - rect.top) / scale;
             const targetIdx = drawInstructions.findIndex((inst, i) => i > 0 && clickY >= inst.dy && clickY <= inst.dy + inst.sh);
             if (targetIdx !== -1) {
                 dragInfo = { isDragging: true, index: targetIdx, startY: e.clientY, startOffset: images[targetIdx].offset };
-                if (interactionTip) interactionTip.classList.remove('opacity-0');
+                $('interactionTip')?.classList.remove('opacity-0');
             }
         }
 
         function onDrag(e) {
             if (!dragInfo.isDragging) return;
-            const scale = parseFloat(zoomRange.value) / 100;
-            const deltaY = (e.clientY - dragInfo.startY) / scale;
-            images[dragInfo.index].offset = dragInfo.startOffset - Math.round(deltaY);
-            updateImageList();
-            debouncedRender();
+            const scale = parseFloat(ui.zoom.value) / 100;
+            images[dragInfo.index].offset = Math.round(dragInfo.startOffset - (e.clientY - dragInfo.startY) / scale);
+            updateImageList(); debouncedRender();
         }
 
         function stopDrag() {
             if (dragInfo.isDragging) {
                 dragInfo.isDragging = false;
-                if (interactionTip) interactionTip.classList.add('opacity-0');
+                $('interactionTip')?.classList.add('opacity-0');
                 debouncedRender();
             }
         }
 
-        clearBtn.addEventListener('click', () => {
+        ui.clear?.addEventListener('click', () => {
             activeProcessId++; images = []; isStitchedMode = false;
-            updateImageList(); if (canvas) { canvas.width = 0; canvas.height = 0; }
+            updateImageList(); if (ui.canvas) { ui.canvas.width = ui.canvas.height = 0; }
             updateLoading(false); showToast("Workspace Reset");
         });
 
-        function updateLoading(show, text = "") {
-            if (show) {
-                if (loading) loading.classList.remove('hidden');
-                if (loadingText) loadingText.textContent = text;
-                if (hubBar) hubBar.classList.add('processing-glow');
-            } else {
-                if (loading) loading.classList.add('hidden');
-                if (progressPercent) progressPercent.textContent = "";
-                if (hubBar) hubBar.classList.remove('processing-glow');
+        function updateLoading(show, text = "", allowPause = false) {
+            ui.loading?.classList.toggle('hidden', !show);
+            if (!show) { if (ui.progress) ui.progress.textContent = ""; ui.hub?.classList.remove('processing-glow'); return; }
+            if (ui.loadText) ui.loadText.textContent = text;
+            ui.hub?.classList.add('processing-glow');
+            if (ui.controls) {
+                ui.controls.classList.toggle('hidden', !allowPause);
+                ui.views.analyzing?.classList.remove('hidden');
+                ui.views.paused?.classList.add('hidden');
             }
         }
 
@@ -474,11 +565,46 @@
 
         async function getOCRWorker() {
             if (ocrWorker) return ocrWorker;
-            ocrWorker = await Tesseract.createWorker('jpn+eng', 1, { logger: m => { if (m.status === 'recognizing text') { const prog = Math.round(m.progress * 100); if (progressPercent) progressPercent.textContent = `${prog}%`; if (loadingSubText) loadingSubText.textContent = `Analyzing: ${prog}%`; } } });
+            ocrWorker = await Tesseract.createWorker('jpn+eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        const base = (ocrPhase === 'bottom') ? 50 : 0;
+                        const prog = base + Math.round(m.progress * 50);
+                        if (progressPercent) progressPercent.textContent = `${prog}%`;
+                    }
+                }
+            });
             return ocrWorker;
         }
 
         const dateRegex = /(\d{4}年)?\d{1,2}月\d{1,2}日/;
+
+        const drawOCRDebug = (ctx, result, dy, sy, boltText, isTop, imgH) => {
+            if (!result) return;
+            const scanRange = settings.scanRange;
+            result.lines.forEach(l => {
+                const absY = (isTop ? 0 : (imgH - scanRange)) + l.bbox.y0;
+                const yTrim = dy + (absY - sy);
+                const h = l.bbox.y1 - l.bbox.y0;
+                const norm = l.text.replace(/\s+/g, '');
+                const isBolt = boltText === norm;
+
+                ctx.fillStyle = isBolt ? "rgba(254, 240, 138, 0.4)" : "rgba(0, 100, 255, 0.05)";
+                if (isBolt) {
+                    ctx.fillRect(l.bbox.x0, yTrim, l.bbox.x1 - l.bbox.x0, h);
+                    ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3;
+                    ctx.fillStyle = "#000000"; ctx.font = "bold 10px monospace";
+                    ctx.fillText(`Orig: (${l.bbox.x0}, ${Math.round(absY)})`, l.bbox.x0, yTrim - 15);
+                    ctx.fillText(`Trim: (${l.bbox.x0}, ${Math.round(yTrim)})`, l.bbox.x0, yTrim - 5);
+                } else {
+                    ctx.strokeStyle = isTop ? "rgba(255, 0, 0, 0.4)" : "rgba(0, 100, 255, 0.4)";
+                    ctx.lineWidth = 1;
+                }
+                ctx.strokeRect(l.bbox.x0, yTrim, l.bbox.x1 - l.bbox.x0, h);
+                ctx.fillStyle = isBolt ? "#c2410c" : (isTop ? "rgba(255, 0, 0, 0.8)" : "rgba(0, 100, 255, 0.8)");
+                ctx.fillText(norm, l.bbox.x1 + 5, yTrim + h / 2 + 5);
+            });
+        };
 
         // --- BOLT-ON LOGIC: ALIGN TRIM COORDINATES ---
         function findBestBoltAnchor(imgA, imgB, ocrBottomA, ocrTopB) {
@@ -510,26 +636,32 @@
 
             try {
                 const worker = await getOCRWorker();
-                const scanH = settings.scanRange;
+                const scanH = settings.forceFullScan ? item.imgElement.height : Math.min(settings.scanRange, item.imgElement.height);
                 const tmpCanvas = document.createElement('canvas');
                 tmpCanvas.width = item.imgElement.width; tmpCanvas.height = scanH;
                 const tmpCtx = tmpCanvas.getContext('2d');
+                tmpCtx.imageSmoothingEnabled = false;
 
+                // Step 1: Top Scan (0-50%)
+                ocrPhase = 'top';
                 tmpCtx.drawImage(item.imgElement, 0, 0, item.imgElement.width, scanH, 0, 0, item.imgElement.width, scanH);
                 const ocrTop = await worker.recognize(tmpCanvas.toDataURL());
                 item.ocrTopResult = ocrTop.data;
 
                 const firstDate = ocrTop.data.lines.find(l => dateRegex.test(l.text.replace(/\s+/g, '')));
-                item.autoTrim.top = firstDate ? firstDate.bbox.y0 : 130;
+                item.autoTrim.top = firstDate ? Math.round(firstDate.bbox.y0) : 130;
                 if (firstDate) item.anchors.start = firstDate.text.replace(/\s+/g, '').substring(0, 12);
 
+                // Step 2: Bottom Scan (50-100%)
+                ocrPhase = 'bottom';
                 tmpCtx.clearRect(0, 0, item.imgElement.width, scanH);
-                tmpCtx.drawImage(item.imgElement, 0, item.imgElement.height - scanH, item.imgElement.width, scanH, 0, 0, item.imgElement.width, scanH);
+                const bY = Math.round(item.imgElement.height - scanH);
+                tmpCtx.drawImage(item.imgElement, 0, bY, item.imgElement.width, scanH, 0, 0, item.imgElement.width, scanH);
                 const ocrBottom = await worker.recognize(tmpCanvas.toDataURL());
                 item.ocrBottomResult = ocrBottom.data;
 
                 const lastDate = ocrBottom.data.lines.sort((a, b) => b.bbox.y1 - a.bbox.y1).find(l => dateRegex.test(l.text.replace(/\s+/g, '')));
-                item.autoTrim.bottom = lastDate ? (item.imgElement.height - scanH) + lastDate.bbox.y1 : item.imgElement.height - 120;
+                item.autoTrim.bottom = lastDate ? Math.round(bY + lastDate.bbox.y1) : item.imgElement.height - 120;
 
                 if (index > 0) {
                     const prev = images[index - 1];
@@ -539,7 +671,7 @@
                         const trimY_Bolt_A = anchor.absY_A - prev.autoTrim.top;
                         const trimY_Bolt_B = anchor.absY_B - item.autoTrim.top;
                         const sH_A = prev.autoTrim.bottom - prev.autoTrim.top;
-                        item.offset = sH_A - trimY_Bolt_A + trimY_Bolt_B;
+                        item.offset = Math.round(sH_A - trimY_Bolt_A + trimY_Bolt_B);
                         item.boltText = anchor.text;
                     } else {
                         const width = prev.imgElement.width;
@@ -549,7 +681,8 @@
                         canvasB.width = width; canvasB.height = scanH;
                         const ctxA = canvasA.getContext('2d');
                         const ctxB = canvasB.getContext('2d');
-                        ctxA.drawImage(prev.imgElement, 0, prev.imgElement.height - scanH, width, scanH, 0, 0, width, scanH);
+                        ctxA.imageSmoothingEnabled = false; ctxB.imageSmoothingEnabled = false;
+                        ctxA.drawImage(prev.imgElement, 0, Math.round(prev.imgElement.height - scanH), width, scanH, 0, 0, width, scanH);
                         ctxB.drawImage(item.imgElement, 0, 0, width, scanH, 0, 0, width, scanH);
                         const dataA = ctxA.getImageData(0, 0, width, scanH).data;
                         const dataB = ctxB.getImageData(0, 0, width, scanH).data;
@@ -558,8 +691,8 @@
                         for (let o = 40; o < scanH - 80; o++) {
                             let diff = 0; let samples = 0;
                             for (let y = 0; y < o; y += 4) {
-                                const rowA = (scanH - o + y) * width * 4;
-                                const rowB = y * width * 4;
+                                const rowA = Math.round((scanH - o + y) * width * 4);
+                                const rowB = Math.round(y * width * 4);
                                 for (let x = Math.floor(width * 0.3); x < Math.floor(width * 0.7); x += 40) {
                                     const idxA = rowA + x * 4; const idxB = rowB + x * 4;
                                     diff += Math.abs(dataA[idxA] - dataB[idxB]); samples++;
@@ -568,7 +701,7 @@
                             const score = diff / samples;
                             if (score < minDiff) { minDiff = score; bestO = o; }
                         }
-                        item.offset = bestO - item.autoTrim.top;
+                        item.offset = Math.round(bestO - item.autoTrim.top);
                         item.boltText = null;
                     }
                 }
@@ -577,15 +710,32 @@
 
         ocrAllBtn.onclick = async () => {
             if (images.length === 0) return;
-            updateLoading(true, "Aligning Trim Coords");
+            isAnalysisCancelled = false;
+            isAnalysisPaused = false;
+            updateLoading(true, "Aligning Trim Coords", true);
             try {
                 for (let i = 0; i < images.length; i++) {
+                    await waitIfPaused();
+                    if (isAnalysisCancelled) {
+                        isStitchedMode = false;
+                        return;
+                    }
                     if (loadingText) loadingText.textContent = `Syncing (${i + 1}/${images.length})`;
                     await analyzeHybrid(i);
                 }
                 isStitchedMode = true; if (mainPanel && !mainPanel.classList.contains('panel-hidden')) togglePanel();
                 showToast("Align Success");
-            } finally { updateLoading(false); debouncedRender(); autoFitZoom(); }
+            } catch (err) {
+                if (!isAnalysisCancelled) {
+                    console.error(err);
+                    showToast("Analysis Error");
+                }
+            } finally {
+                updateLoading(false);
+                updateImageList();
+                debouncedRender();
+                autoFitZoom();
+            }
         };
 
         function updateImageList() {
@@ -614,30 +764,37 @@
                 ctx.fillStyle = "#f8fafc"; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 images.forEach((img, i) => { const r = Math.floor(i / cols); const c = i % cols; ctx.drawImage(img.imgElement, padding + c * (cellW + padding), padding + r * (cellH + padding), cellW, cellH); });
             } else {
+                let maxW = 0; images.forEach(img => { if (img.imgElement.width > maxW) maxW = img.imgElement.width; });
                 let currentY = 0; drawInstructions = [];
                 for (let i = 0; i < images.length; i++) {
-                    const item = images[i]; const sTop = item.autoTrim.top; const sBottom = item.autoTrim.bottom; const sH = Math.max(0, sBottom - sTop);
-                    if (i > 0) currentY -= item.offset;
-                    drawInstructions.push({ imgObj: item, sy: sTop, sh: sH, dy: currentY });
+                    const item = images[i];
+                    const sTop = Math.round(item.autoTrim.top);
+                    const sBottom = Math.round(item.autoTrim.bottom);
+                    const sH = Math.max(0, sBottom - sTop);
+                    if (i > 0) currentY -= Math.round(item.offset);
+                    drawInstructions.push({ imgObj: item, sy: sTop, sh: sH, dy: Math.round(currentY) });
                     currentY += sH;
                 }
-                canvas.width = baseW; canvas.height = Math.max(1, currentY); ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                canvas.width = maxW; canvas.height = Math.max(1, Math.round(currentY));
+                ctx.imageSmoothingEnabled = false;
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
                 drawInstructions.forEach((d, i) => {
                     const isGrabbing = (dragInfo.isDragging && i === dragInfo.index);
                     const isBehind = (dragInfo.isDragging && i === dragInfo.index - 1);
                     ctx.save();
+                    const drawX = Math.round((canvas.width - d.imgObj.imgElement.width) / 2);
                     if (isGrabbing) {
                         ctx.globalAlpha = 0.5;
-                        ctx.drawImage(d.imgObj.imgElement, 0, d.sy, d.imgObj.imgElement.width, d.sh, 0, d.dy, baseW, d.sh);
-                        ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 15; ctx.strokeRect(0, d.dy, baseW, d.sh);
+                        ctx.drawImage(d.imgObj.imgElement, 0, d.sy, d.imgObj.imgElement.width, d.sh, drawX, d.dy, d.imgObj.imgElement.width, d.sh);
+                        ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 15; ctx.strokeRect(drawX, d.dy, d.imgObj.imgElement.width, d.sh);
                     } else if (isBehind) {
                         ctx.globalAlpha = 1.0;
                         const fullH = d.imgObj.imgElement.height - d.sy;
-                        ctx.drawImage(d.imgObj.imgElement, 0, d.sy, d.imgObj.imgElement.width, fullH, 0, d.dy, baseW, fullH);
-                        ctx.strokeStyle = "#10b981"; ctx.lineWidth = 15; ctx.strokeRect(0, d.dy, baseW, d.sh);
+                        ctx.drawImage(d.imgObj.imgElement, 0, d.sy, d.imgObj.imgElement.width, fullH, drawX, d.dy, d.imgObj.imgElement.width, fullH);
+                        ctx.strokeStyle = "#10b981"; ctx.lineWidth = 15; ctx.strokeRect(drawX, d.dy, d.imgObj.imgElement.width, d.sh);
                     } else {
                         ctx.globalAlpha = 1.0;
-                        ctx.drawImage(d.imgObj.imgElement, 0, d.sy, d.imgObj.imgElement.width, d.sh, 0, d.dy, baseW, d.sh);
+                        ctx.drawImage(d.imgObj.imgElement, 0, d.sy, d.imgObj.imgElement.width, d.sh, drawX, d.dy, d.imgObj.imgElement.width, d.sh);
                     }
                     if (settings.debugMode) {
                         ctx.fillStyle = "rgba(0,0,0,0.6)"; ctx.fillRect(10, d.dy + 10, 320, 60);
@@ -645,56 +802,13 @@
                         ctx.fillText(`IMG #${i + 1} ${d.imgObj.boltText ? '[BOLTED]' : '[PIXEL]'}`, 20, d.dy + 35);
                         ctx.font = "10px monospace"; ctx.fillStyle = "rgba(255,255,255,0.7)";
                         ctx.fillText(`Offset: ${Math.round(d.imgObj.offset)}px (Match: ${d.imgObj.boltText || 'N/A'})`, 20, d.dy + 52);
+
                         if (settings.showBoxes) {
                             ctx.font = "12px sans-serif";
-                            if (d.imgObj.ocrBottomResult) {
-                                const bSnippetStart = d.imgObj.imgElement.height - settings.scanRange;
-                                d.imgObj.ocrBottomResult.lines.forEach(l => {
-                                    const absY_orig = bSnippetStart + l.bbox.y0;
-                                    const y_trim = d.dy + (absY_orig - d.sy);
-                                    const h = l.bbox.y1 - l.bbox.y0;
-                                    const norm = l.text.replace(/\s+/g, '');
-                                    const nextImg = images[i + 1];
-                                    const isBolt = nextImg && nextImg.boltText && norm === nextImg.boltText;
-
-                                    if (isBolt) {
-                                        ctx.fillStyle = "rgba(254, 240, 138, 0.4)";
-                                        ctx.fillRect(l.bbox.x0, y_trim, l.bbox.x1 - l.bbox.x0, h);
-                                        ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3;
-                                        ctx.fillStyle = "#000000"; ctx.font = "bold 10px monospace";
-                                        ctx.fillText(`Orig: (${l.bbox.x0}, ${absY_orig})`, l.bbox.x0, y_trim - 15);
-                                        ctx.fillText(`Trim: (${l.bbox.x0}, ${Math.round(y_trim)})`, l.bbox.x0, y_trim - 5);
-                                    } else {
-                                        ctx.strokeStyle = "rgba(0, 100, 255, 0.4)"; ctx.lineWidth = 1;
-                                    }
-                                    ctx.strokeRect(l.bbox.x0, y_trim, l.bbox.x1 - l.bbox.x0, h);
-                                    ctx.fillStyle = isBolt ? "#c2410c" : "rgba(0, 100, 255, 0.8)";
-                                    ctx.fillText(norm, l.bbox.x1 + 5, y_trim + h / 2 + 5);
-                                });
-                            }
-                            if (d.imgObj.ocrTopResult) {
-                                d.imgObj.ocrTopResult.lines.forEach(l => {
-                                    const absY_orig = l.bbox.y0;
-                                    const y_trim = d.dy + (absY_orig - d.sy);
-                                    const h = l.bbox.y1 - l.bbox.y0;
-                                    const norm = l.text.replace(/\s+/g, '');
-                                    const isBolt = d.imgObj.boltText && norm === d.imgObj.boltText;
-
-                                    if (isBolt) {
-                                        ctx.fillStyle = "rgba(254, 240, 138, 0.4)";
-                                        ctx.fillRect(l.bbox.x0, y_trim, l.bbox.x1 - l.bbox.x0, h);
-                                        ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3;
-                                        ctx.fillStyle = "#000000"; ctx.font = "bold 10px monospace";
-                                        ctx.fillText(`Orig: (${l.bbox.x0}, ${absY_orig})`, l.bbox.x0, y_trim - 15);
-                                        ctx.fillText(`Trim: (${l.bbox.x0}, ${Math.round(y_trim)})`, l.bbox.x0, y_trim - 5);
-                                    } else {
-                                        ctx.strokeStyle = "rgba(255, 0, 0, 0.4)"; ctx.lineWidth = 1;
-                                    }
-                                    ctx.strokeRect(l.bbox.x0, y_trim, l.bbox.x1 - l.bbox.x0, h);
-                                    ctx.fillStyle = isBolt ? "#c2410c" : "rgba(255, 0, 0, 0.8)";
-                                    ctx.fillText(norm, l.bbox.x1 + 5, y_trim + h / 2 + 5);
-                                });
-                            }
+                            // Bottom OCR logic
+                            drawOCRDebug(ctx, d.imgObj.ocrBottomResult, d.dy, d.sy, images[i + 1]?.boltText, false, d.imgObj.imgElement.height);
+                            // Top OCR logic
+                            drawOCRDebug(ctx, d.imgObj.ocrTopResult, d.dy, d.sy, d.imgObj.boltText, true, d.imgObj.imgElement.height);
                         }
                     }
                     ctx.restore();
@@ -705,21 +819,40 @@
         // --- STABLE EXPORT LOGIC ---
         downloadBtn.onclick = () => {
             if (!isStitchedMode || !canvas || canvas.height <= 1) return;
-            updateLoading(true, "PNG作成中");
+            updateLoading(true, "エクスポート準備中");
 
-            // ポップアップ制限を回避するため、必ずアプリ内のオーバーレイを表示する
             setTimeout(() => {
                 try {
-                    const dataUrl = canvas.toDataURL('image/png');
-                    if (resultImage) {
-                        resultImage.src = dataUrl;
+                    // Blob形式でプレビューを生成
+                    canvas.toBlob((blob) => {
+                        if (!blob) {
+                            showToast("生成失敗");
+                            updateLoading(false);
+                            return;
+                        }
+
+                        if (previewUrl) URL.revokeObjectURL(previewUrl);
+                        previewUrl = URL.createObjectURL(blob);
+
+                        if (resultImage) resultImage.src = previewUrl;
                         if (saveOverlay) saveOverlay.classList.remove('hidden');
-                        showToast("保存の準備ができました");
-                    }
+
+                        if (realDownloadBtn) {
+                            realDownloadBtn.onclick = () => {
+                                const a = document.createElement('a');
+                                a.href = previewUrl;
+                                a.download = `joined_${Date.now()}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                showToast("保存完了");
+                            };
+                        }
+                        updateLoading(false);
+                    }, 'image/png');
                 } catch (e) {
                     showToast("保存エラー: 画像が巨大すぎます");
                     console.error(e);
-                } finally {
                     updateLoading(false);
                 }
             }, 100);
