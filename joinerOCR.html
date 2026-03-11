@@ -110,6 +110,26 @@
                 box-shadow: 0 0 20px rgba(37, 99, 235, 0.8);
             }
         }
+
+        .start-page-gradient {
+            background: radial-gradient(circle at top right, #f8fafc 0%, #f1f5f9 100%);
+        }
+
+        .hero-title {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Hide elements when start page is visible */
+        #interactionTip {
+            display: none !important;
+        }
+
+        #interactionTip.active {
+            display: flex !important;
+        }
     </style>
 </head>
 
@@ -248,7 +268,50 @@
     </div>
 
     <!-- Main Viewport -->
-    <div class="relative h-screen w-screen overflow-hidden flex flex-col">
+    <div class="relative h-screen w-screen overflow-hidden flex flex-col start-page-gradient">
+        <!-- Start Page -->
+        <div id="startPage"
+            class="absolute inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center overflow-y-auto scrolling-touch bg-slate-100">
+            <div class="max-w-2xl w-full">
+                <div
+                    class="mb-8 inline-block p-4 bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 animate-bounce">
+                    <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-width="2" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <h1 class="hero-title text-5xl md:text-7xl font-black italic tracking-tighter mb-4">Joiner OCR</h1>
+                <p class="text-slate-500 font-bold text-sm md:text-base mb-12 tracking-tight">スクリーンショットを賢く繋ぎ、美しく保存。</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                    <div class="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] border border-white shadow-sm">
+                        <div class="text-blue-600 font-black text-xs uppercase tracking-widest mb-3">01. 画像追加</div>
+                        <p class="text-slate-600 text-[11px] leading-relaxed font-medium">
+                            重なり部分のある複数のスクリーンショットを「追加」ボタンから読み込みます。</p>
+                    </div>
+                    <div class="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] border border-white shadow-sm">
+                        <div class="text-emerald-500 font-black text-xs uppercase tracking-widest mb-3">02. 解析・結合</div>
+                        <p class="text-slate-600 text-[11px] leading-relaxed font-medium">「Smart
+                            Align」を実行。OCRがテキストを解析し、ピクセル単位で自動結合します。</p>
+                    </div>
+                    <div class="bg-white/60 backdrop-blur-md p-6 rounded-[2rem] border border-white shadow-sm">
+                        <div class="text-amber-500 font-black text-xs uppercase tracking-widest mb-3">03. 調整・保存</div>
+                        <p class="text-slate-600 text-[11px] leading-relaxed font-medium">
+                            必要ならドラッグで微調整。納得がいったら「保存」で1枚の画像として書き出し。</p>
+                    </div>
+                </div>
+
+                <div class="mt-16 flex flex-col items-center gap-4">
+                    <button onclick="document.getElementById('imageInput').click()"
+                        class="px-12 py-5 bg-slate-900 text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 italic">
+                        画像を読み込んで開始
+                    </button>
+                    <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest">Serverless • Private •
+                        Fast</p>
+                </div>
+            </div>
+        </div>
+
         <div id="interactionTip"
             class="absolute top-6 left-1/2 -translate-x-1/2 z-[60] bg-blue-600 text-white text-[10px] px-6 py-2.5 rounded-full font-black shadow-xl transition-opacity opacity-0 pointer-events-none uppercase tracking-[0.2em] flex items-center gap-2">
             <div class="w-2 h-2 bg-white rounded-full animate-ping"></div>
@@ -256,7 +319,7 @@
         </div>
 
         <div id="previewContainer"
-            class="flex-1 overflow-auto p-4 flex justify-center items-start pt-20 pb-32 scrolling-touch">
+            class="hidden flex-1 overflow-auto p-4 flex justify-center items-start pt-20 pb-32 scrolling-touch">
             <div id="canvasWrapper" class="relative flex justify-center">
                 <canvas id="canvas" class="preview-canvas bg-white"></canvas>
             </div>
@@ -264,7 +327,7 @@
 
         <!-- Zoom Bar -->
         <div
-            class="absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-4 bg-white/90 backdrop-blur-lg shadow-2xl p-4 rounded-3xl border border-white">
+            class="zoom-bar absolute right-4 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-4 bg-white/90 backdrop-blur-lg shadow-2xl p-4 rounded-3xl border border-white">
             <button onclick="stepValue('zoomRange', 10)"
                 class="w-10 h-10 flex items-center justify-center bg-white border border-slate-200 rounded-2xl text-xl font-bold text-slate-700 active:scale-90 shadow-sm">+</button>
             <div class="h-32 flex flex-col items-center py-2">
@@ -276,7 +339,7 @@
         </div>
 
         <!-- Command Hub -->
-        <div class="fixed bottom-8 inset-x-0 z-50 px-6 pointer-events-none">
+        <div class="command-hub fixed bottom-8 inset-x-0 z-50 px-6 pointer-events-none">
             <div id="hubBar"
                 class="max-w-md mx-auto bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.4)] p-2.5 flex items-center justify-between pointer-events-auto border border-white/10 transition-all">
                 <button onclick="document.getElementById('imageInput').click()"
@@ -379,7 +442,8 @@
             panel: $('mainPanel'), hub: $('hubBar'), save: $('saveOverlay'),
             resultImg: $('resultImage'), settings: $('settingsOverlay'),
             realDl: $('realDownloadBtn'), controls: $('processControls'),
-            views: { analyzing: $('analyzingView'), paused: $('pausedView') }
+            views: { analyzing: $('analyzingView'), paused: $('pausedView') },
+            startPage: $('startPage')
         };
 
         const settings = { debugMode: false, showBoxes: false, scanRange: 2000, forceFullScan: false };
@@ -408,6 +472,19 @@
             ui.toast.textContent = msg;
             ui.toast.classList.remove('translate-y-10', 'opacity-0');
             setTimeout(() => ui.toast?.classList.add('translate-y-10', 'opacity-0'), 3000);
+        }
+
+        function updateVisibility() {
+            const hasImages = images.length > 0;
+            ui.startPage?.classList.toggle('hidden', hasImages);
+            ui.preview?.classList.toggle('hidden', !hasImages);
+            document.body.classList.toggle('start-mode', !hasImages);
+
+            // Forcefully hide/show editor UI via display property
+            const editorUI = document.querySelectorAll('.zoom-bar, .command-hub');
+            editorUI.forEach(el => el.style.display = hasImages ? '' : 'none');
+
+            if (ui.hub) ui.hub.classList.toggle('opacity-30', !hasImages);
         }
 
         window.togglePanel = () => ui.panel && ui.panel.classList.toggle('panel-hidden');
@@ -497,7 +574,7 @@
         ui.clear?.addEventListener('click', () => {
             activeProcessId++; images = []; isStitchedMode = false;
             updateImageList(); if (ui.canvas) { ui.canvas.width = ui.canvas.height = 0; }
-            updateLoading(false); showToast("Workspace Reset");
+            updateLoading(false); updateVisibility(); showToast("Workspace Reset");
         });
 
         function updateLoading(show, text = "", allowPause = false) {
@@ -550,7 +627,7 @@
                         matchScore: 0
                     });
                 }
-                isStitchedMode = false; updateImageList(); await requestRender(); autoFitZoom();
+                isStitchedMode = false; updateImageList(); updateVisibility(); await requestRender(); autoFitZoom();
                 showToast(`Loaded ${files.length} images`);
             } catch (err) { showToast("Load Error"); } finally { imageInput.value = ''; updateLoading(false); }
         }
@@ -751,7 +828,7 @@
         }
 
         window.move = (index, dir) => { const t = index + dir; if (t < 0 || t >= images.length) return;[images[index], images[t]] = [images[t], images[index]]; updateImageList(); requestRender(); };
-        window.remove = (index) => { images.splice(index, 1); updateImageList(); requestRender(); };
+        window.remove = (index) => { images.splice(index, 1); updateImageList(); updateVisibility(); requestRender(); };
 
         async function render(processId) {
             if (images.length === 0 || !canvas) return;
@@ -817,14 +894,14 @@
         }
 
         // --- STABLE EXPORT LOGIC ---
-        downloadBtn.onclick = () => {
-            if (!isStitchedMode || !canvas || canvas.height <= 1) return;
+        ui.download.onclick = () => {
+            if (!isStitchedMode || !ui.canvas || ui.canvas.height <= 1) return;
             updateLoading(true, "エクスポート準備中");
 
             setTimeout(() => {
                 try {
                     // Blob形式でプレビューを生成
-                    canvas.toBlob((blob) => {
+                    ui.canvas.toBlob((blob) => {
                         if (!blob) {
                             showToast("生成失敗");
                             updateLoading(false);
@@ -834,17 +911,23 @@
                         if (previewUrl) URL.revokeObjectURL(previewUrl);
                         previewUrl = URL.createObjectURL(blob);
 
-                        if (resultImage) resultImage.src = previewUrl;
-                        if (saveOverlay) saveOverlay.classList.remove('hidden');
+                        if (ui.resultImg) ui.resultImg.src = previewUrl;
+                        if (ui.save) ui.save.classList.remove('hidden');
 
-                        if (realDownloadBtn) {
-                            realDownloadBtn.onclick = () => {
+                        if (ui.realDl) {
+                            ui.realDl.onclick = () => {
                                 const a = document.createElement('a');
+                                a.style.display = 'none';
                                 a.href = previewUrl;
-                                a.download = `joined_${Date.now()}.png`;
+                                a.download = `joiner_${Date.now()}.png`;
                                 document.body.appendChild(a);
                                 a.click();
-                                document.body.removeChild(a);
+                                // aタグの削除を遅延させることでdownload属性が無視される現象を防ぐ
+                                setTimeout(() => {
+                                    if (a.parentNode) {
+                                        document.body.removeChild(a);
+                                    }
+                                }, 150);
                                 showToast("保存完了");
                             };
                         }
@@ -860,6 +943,7 @@
 
         window.addEventListener('resize', autoFitZoom);
         window.onload = () => debouncedRender();
+        updateVisibility();
     </script>
 </body>
 
